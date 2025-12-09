@@ -11,8 +11,7 @@ const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-    },
-    path: '/wear/socket.io'
+    }
 });
 
 const PORT = 3001; // Internal port
