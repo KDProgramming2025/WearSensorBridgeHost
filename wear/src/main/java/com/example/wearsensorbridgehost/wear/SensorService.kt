@@ -49,12 +49,9 @@ class SensorService : Service(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_HEART_RATE) {
             val heartRate = event.values[0].toInt()
-            // Convert to bytes
-            val data = ByteBuffer.allocate(4).putInt(heartRate).array()
-            // Encrypt
-            val encryptedData = cryptoManager.encrypt(data)
-            // Send via BLE
-            bleServerManager.updateSensorValue(encryptedData)
+            // Send as plain text
+            val message = "HR: $heartRate"
+            bleServerManager.updateSensorValue(message.toByteArray(Charsets.UTF_8))
         }
     }
 

@@ -37,6 +37,7 @@ class BleScannerManager(private val context: Context) {
             mqttManager.connect()
             handler.post { onStatusChanged?.invoke("MQTT Connected") }
             mqttManager.onMessageReceived = { message ->
+                handler.post { onDataReceived?.invoke("Broadcast: $message") }
                 sendToWatch(message)
             }
         }.start()
@@ -101,15 +102,13 @@ class BleScannerManager(private val context: Context) {
         Thread {
             while (isMockMode) {
                 val mockHeartRate = (60..100).random()
-                val data = java.nio.ByteBuffer.allocate(4).putInt(mockHeartRate).array()
-                // In a real app, we would encrypt this too, but for mock we just send base64 of raw
-                val encryptedString = Base64.encodeToString(data, Base64.NO_WRAP)
+                val message = "HR: $mockHeartRate BPM (Mock)"
                 
                 handler.post {
-                    onDataReceived?.invoke("HR: $mockHeartRate BPM (Mock)")
+                    onDataReceived?.invoke(message)
                 }
                 
-                sendToServer(encryptedString)
+                sendToServer(message)
                 try {
                     Thread.sleep(1000)
                 } catch (e: InterruptedException) {
@@ -172,15 +171,15 @@ class BleScannerManager(private val context: Context) {
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             val data = characteristic.value
-            val encryptedString = Base64.encodeToString(data, Base64.NO_WRAP)
-            handler.post { onDataReceived?.invoke("Encrypted Data Received") }
-            sendToServer(encryptedString)
+            val message = String(data, Charsets.UTF_8)
+            handler.post { onDataReceived?.invoke("Received: $message") }
+            sendToServer(message)
         }
     }
 
-    private fun sendToServer(encryptedData: String) {
+    private fun sendToServer(message: String) {
         // Send via REST API
-        NetworkManager.api.sendData(SensorData(encryptedData)).enqueue(object : Callback<Void> {
+        NetworkManager.api.sendData(SensorData(message)).enqueue(object : Callback<Void> {
             override fun onResponse(call: Call<Void>, response: Response<Void>) {
                 Log.d("BleScanner", "Data sent to server via REST")
             }
@@ -192,7 +191,7 @@ class BleScannerManager(private val context: Context) {
 
         // Send via MQTT
         Thread {
-            mqttManager.publish(encryptedData)
+            mqttManager.publish(message)
         }.start()
     }
 }
