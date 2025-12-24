@@ -36,10 +36,8 @@
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
         // Connect to the socket.io server
-        // We use the path option because Nginx will route /wear/socket.io to our backend
-        const socket = io({
-            path: '/wear/socket.io'
-        });
+        // Since nginx routes /wear/ to our server, socket.io will use /wear/socket.io automatically
+        const socket = io();
 
         const statusDiv = document.getElementById('connectionStatus');
         const messagesUl = document.getElementById('messages');

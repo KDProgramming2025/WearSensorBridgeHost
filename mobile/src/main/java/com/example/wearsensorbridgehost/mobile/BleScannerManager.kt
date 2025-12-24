@@ -32,14 +32,16 @@ class BleScannerManager(private val context: Context) {
 
     init {
         // Connect to MQTT in a background thread
+        mqttManager.onConnectionStatusChanged = { isConnected, statusMessage ->
+            handler.post { onStatusChanged?.invoke(statusMessage) }
+        }
+        mqttManager.onMessageReceived = { message ->
+            handler.post { onDataReceived?.invoke("Broadcast: $message") }
+            sendToWatch(message)
+        }
         Thread {
             handler.post { onStatusChanged?.invoke("Connecting to MQTT...") }
             mqttManager.connect()
-            handler.post { onStatusChanged?.invoke("MQTT Connected") }
-            mqttManager.onMessageReceived = { message ->
-                handler.post { onDataReceived?.invoke("Broadcast: $message") }
-                sendToWatch(message)
-            }
         }.start()
     }
 
@@ -108,7 +110,10 @@ class BleScannerManager(private val context: Context) {
                     onDataReceived?.invoke(message)
                 }
                 
-                sendToServer(message)
+                // Send only via MQTT (not REST)
+                Log.d("BleScanner", "Sending mock data: $message")
+                mqttManager.publish(message)
+                
                 try {
                     Thread.sleep(1000)
                 } catch (e: InterruptedException) {
@@ -173,25 +178,9 @@ class BleScannerManager(private val context: Context) {
             val data = characteristic.value
             val message = String(data, Charsets.UTF_8)
             handler.post { onDataReceived?.invoke("Received: $message") }
-            sendToServer(message)
-        }
-    }
-
-    private fun sendToServer(message: String) {
-        // Send via REST API
-        NetworkManager.api.sendData(SensorData(message)).enqueue(object : Callback<Void> {
-            override fun onResponse(call: Call<Void>, response: Response<Void>) {
-                Log.d("BleScanner", "Data sent to server via REST")
-            }
-
-            override fun onFailure(call: Call<Void>, t: Throwable) {
-                Log.e("BleScanner", "Failed to send data via REST", t)
-            }
-        })
-
-        // Send via MQTT
-        Thread {
+            // Send only via MQTT (not REST)
+            Log.d("BleScanner", "Sending BLE data: $message")
             mqttManager.publish(message)
-        }.start()
+        }
     }
 }

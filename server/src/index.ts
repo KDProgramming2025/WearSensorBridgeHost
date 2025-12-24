@@ -11,10 +11,11 @@ const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-    }
+    },
+    path: "/socket.io"
 });
 
-const PORT = 3001; // Internal port
+const PORT = 3000; // Internal port (nginx proxies /wear/ to this)
 const MQTT_BROKER = 'mqtt://localhost:1883';
 const TOPIC_DATA = 'sensor/heartrate';
 const TOPIC_CONTROL = 'sensor/control';

@@ -22,6 +22,7 @@ class MqttManager {
     }
 
     var onMessageReceived: ((String) -> Unit)? = null
+    var onConnectionStatusChanged: ((Boolean, String) -> Unit)? = null
 
     fun connect() {
         try {
@@ -34,6 +35,7 @@ class MqttManager {
             mqttClient?.setCallback(object : MqttCallback {
                 override fun connectionLost(cause: Throwable?) {
                     Log.e("MqttManager", "Connection lost", cause)
+                    onConnectionStatusChanged?.invoke(false, "MQTT Disconnected")
                 }
 
                 override fun messageArrived(topic: String?, message: MqttMessage?) {
@@ -51,8 +53,10 @@ class MqttManager {
             mqttClient?.connect(options)
             mqttClient?.subscribe(CONTROL_TOPIC)
             Log.d("MqttManager", "Connected to MQTT Broker")
+            onConnectionStatusChanged?.invoke(true, "MQTT Connected")
         } catch (e: MqttException) {
             Log.e("MqttManager", "Error connecting to MQTT Broker", e)
+            onConnectionStatusChanged?.invoke(false, "MQTT Connection Failed: ${e.message}")
         }
     }
 
@@ -62,11 +66,18 @@ class MqttManager {
                 val message = MqttMessage(payload.toByteArray())
                 message.qos = 1
                 mqttClient?.publish(TOPIC, message)
-                Log.d("MqttManager", "Message published")
+                Log.d("MqttManager", "Message published: $payload")
             } else {
-                Log.e("MqttManager", "Client not connected")
+                Log.e("MqttManager", "Client not connected, attempting reconnect")
                 // Attempt reconnect
                 connect()
+                // Try publishing again after reconnect
+                if (mqttClient?.isConnected == true) {
+                    val message = MqttMessage(payload.toByteArray())
+                    message.qos = 1
+                    mqttClient?.publish(TOPIC, message)
+                    Log.d("MqttManager", "Message published after reconnect: $payload")
+                }
             }
         } catch (e: MqttException) {
             Log.e("MqttManager", "Error publishing message", e)

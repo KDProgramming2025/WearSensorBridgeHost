@@ -65,7 +65,8 @@ fun MobileApp() {
             statusText = status
             isScanningOrConnected = status.contains("Scanning") || 
                                   status.contains("Connected") || 
-                                  status.contains("Mock Mode")
+                                  status.contains("Mock Mode") ||
+                                  status.contains("MQTT")
         }
         scannerManager.onDataReceived = { data ->
             dataText = data
