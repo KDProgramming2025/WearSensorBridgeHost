@@ -27,20 +27,21 @@ class BleScannerManager(private val context: Context) {
     private var isMockMode = false
     private val handler = Handler(Looper.getMainLooper())
     
-    var onStatusChanged: ((String) -> Unit)? = null
+    var onBleStatusChanged: ((String) -> Unit)? = null
+    var onMqttStatusChanged: ((String) -> Unit)? = null
     var onDataReceived: ((String) -> Unit)? = null
 
     init {
         // Connect to MQTT in a background thread
-        mqttManager.onConnectionStatusChanged = { isConnected, statusMessage ->
-            handler.post { onStatusChanged?.invoke(statusMessage) }
+        mqttManager.onConnectionStatusChanged = { _, statusMessage ->
+            handler.post { onMqttStatusChanged?.invoke(statusMessage) }
         }
         mqttManager.onMessageReceived = { message ->
             handler.post { onDataReceived?.invoke("Broadcast: $message") }
             sendToWatch(message)
         }
         Thread {
-            handler.post { onStatusChanged?.invoke("Connecting to MQTT...") }
+            handler.post { onMqttStatusChanged?.invoke("Connecting to MQTT...") }
             mqttManager.connect()
         }.start()
     }
@@ -59,7 +60,7 @@ class BleScannerManager(private val context: Context) {
             return
         }
         
-        onStatusChanged?.invoke("Scanning for Watch...")
+        onBleStatusChanged?.invoke("Scanning for watch...")
         val filter = ScanFilter.Builder()
             .setServiceUuid(ParcelUuid(SERVICE_UUID))
             .build()
@@ -74,7 +75,7 @@ class BleScannerManager(private val context: Context) {
         handler.postDelayed({
             if (bluetoothGatt == null && !isMockMode) {
                 Log.d("BleScanner", "Scan timeout. Starting Mock Mode.")
-                onStatusChanged?.invoke("Scan Timeout. Switching to Mock Mode.")
+                onBleStatusChanged?.invoke("Scan timeout; switching to mock mode")
                 scanner.stopScan(scanCallback)
                 startMockMode()
             }
@@ -95,12 +96,12 @@ class BleScannerManager(private val context: Context) {
             isMockMode = false
         }
         
-        onStatusChanged?.invoke("Disconnected")
+        onBleStatusChanged?.invoke("BLE stopped")
     }
 
     private fun startMockMode() {
         isMockMode = true
-        onStatusChanged?.invoke("Mock Mode Active: Generating Data")
+        onBleStatusChanged?.invoke("Mock mode: generating data")
         Thread {
             while (isMockMode) {
                 val mockHeartRate = (60..100).random()
@@ -141,7 +142,7 @@ class BleScannerManager(private val context: Context) {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val device = result.device
             Log.d("BleScanner", "Found device: ${device.name} - ${device.address}")
-            handler.post { onStatusChanged?.invoke("Found: ${device.name ?: "Unknown"}") }
+            handler.post { onBleStatusChanged?.invoke("Found: ${device.name ?: "Unknown"}") }
             
             // Stop scanning and connect
             bluetoothAdapter.bluetoothLeScanner?.stopScan(this)
@@ -154,9 +155,9 @@ class BleScannerManager(private val context: Context) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 bluetoothGatt = gatt
                 gatt.discoverServices()
-                handler.post { onStatusChanged?.invoke("Connected to Watch") }
+                handler.post { onBleStatusChanged?.invoke("Connected to watch") }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                handler.post { onStatusChanged?.invoke("Disconnected") }
+                handler.post { onBleStatusChanged?.invoke("BLE disconnected") }
                 bluetoothGatt = null
             }
         }

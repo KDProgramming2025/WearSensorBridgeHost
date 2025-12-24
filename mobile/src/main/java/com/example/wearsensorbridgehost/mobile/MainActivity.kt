@@ -31,9 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
-import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,22 +52,23 @@ fun MobileApp() {
     val scannerManager = remember { BleScannerManager(context) }
     
     // UI State
-    var statusText by remember { mutableStateOf("Ready to Scan") }
-    var dataText by remember { mutableStateOf("No Data") }
-    var isScanningOrConnected by remember { mutableStateOf(false) }
+    var mqttStatus by remember { mutableStateOf("MQTT: connecting...") }
+    var bleStatus by remember { mutableStateOf("BLE: idle") }
+    var dataText by remember { mutableStateOf("No data yet") }
+    var isBleActive by remember { mutableStateOf(false) }
 
     // Setup callbacks once
     LaunchedEffect(scannerManager) {
-        scannerManager.onStatusChanged = { status ->
-            statusText = status
-            isScanningOrConnected = status.contains("Scanning") || 
-                                  status.contains("Connected") || 
-                                  status.contains("Mock Mode") ||
-                                  status.contains("MQTT")
+        scannerManager.onBleStatusChanged = { status ->
+            bleStatus = "BLE: $status"
+            isBleActive = status.contains("Scanning", ignoreCase = true) ||
+                          status.contains("Connected", ignoreCase = true) ||
+                          status.contains("Mock", ignoreCase = true)
         }
-        scannerManager.onDataReceived = { data ->
-            dataText = data
+        scannerManager.onMqttStatusChanged = { status ->
+            mqttStatus = "MQTT: $status"
         }
+        scannerManager.onDataReceived = { data -> dataText = data }
     }
 
     val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -121,29 +119,16 @@ fun MobileApp() {
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        Text(text = "Status: $statusText", style = MaterialTheme.typography.bodyLarge)
+        Text(text = mqttStatus, style = MaterialTheme.typography.bodyLarge)
+        Text(text = bleStatus, style = MaterialTheme.typography.bodyLarge)
         Text(text = "Data: $dataText", style = MaterialTheme.typography.bodyMedium)
         
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(onClick = {
-            if (isScanningOrConnected) {
-                scannerManager.stopScanning()
-            } else {
-                permissionLauncher.launch(permissionsToRequest)
-            }
+            if (isBleActive) scannerManager.stopScanning() else permissionLauncher.launch(permissionsToRequest)
         }) {
-            Text(if (isScanningOrConnected) "Disconnect" else "Start Scanning")
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Button(onClick = {
-            val workRequest = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES).build()
-            WorkManager.getInstance(context).enqueue(workRequest)
-            statusText = "Background Sync Scheduled"
-        }) {
-            Text("Schedule Background Sync")
+            Text(if (isBleActive) "Stop BLE" else "Start BLE Scan")
         }
     }
 }
