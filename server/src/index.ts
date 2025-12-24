@@ -12,7 +12,7 @@ const io = new Server(server, {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    path: "/wear/socket.io"
+    path: "/socket.io"
 });
 
 const PORT = 3001; // Internal port (nginx proxies /wear/ to this)

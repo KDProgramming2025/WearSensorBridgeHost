@@ -35,8 +35,8 @@
 
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
-        // Connect to the socket.io server behind /wear/
-        const socket = io({ path: '/wear/socket.io' });
+        // Connect to the socket.io server; nginx strips the /wear prefix
+        const socket = io({ path: '/socket.io' });
 
         const statusDiv = document.getElementById('connectionStatus');
         const messagesUl = document.getElementById('messages');
