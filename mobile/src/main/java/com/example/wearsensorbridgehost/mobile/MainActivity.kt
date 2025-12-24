@@ -88,7 +88,7 @@ fun MobileApp() {
         if (result.resultCode == Activity.RESULT_OK) {
             scannerManager.startScanning()
         } else {
-            statusText = "Bluetooth not enabled"
+            bleStatus = "BLE: Bluetooth not enabled"
         }
     }
 
@@ -106,7 +106,7 @@ fun MobileApp() {
                 enableBluetoothLauncher.launch(enableBtIntent)
             }
         } else {
-            statusText = "Permissions missing"
+            bleStatus = "BLE: permissions missing"
         }
     }
 

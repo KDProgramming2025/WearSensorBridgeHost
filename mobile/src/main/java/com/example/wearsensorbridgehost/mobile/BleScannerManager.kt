@@ -56,7 +56,7 @@ class BleScannerManager(private val context: Context) {
         val scanner = bluetoothAdapter.bluetoothLeScanner
         if (scanner == null) {
             Log.e("BleScanner", "BluetoothLeScanner is null. Bluetooth disabled or permissions missing?")
-            onStatusChanged?.invoke("Error: Bluetooth disabled or no permission")
+            onBleStatusChanged?.invoke("Error: Bluetooth disabled or no permission")
             return
         }
         
