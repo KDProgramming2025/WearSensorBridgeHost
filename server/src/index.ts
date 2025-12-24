@@ -15,7 +15,7 @@ const io = new Server(server, {
     path: "/socket.io"
 });
 
-const PORT = 3000; // Internal port (nginx proxies /wear/ to this)
+const PORT = 3001; // Internal port (nginx proxies /wear/ to this)
 const MQTT_BROKER = 'mqtt://localhost:1883';
 const TOPIC_DATA = 'sensor/heartrate';
 const TOPIC_CONTROL = 'sensor/control';
